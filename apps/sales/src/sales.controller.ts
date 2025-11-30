@@ -1,12 +1,19 @@
-import { Controller, Get } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { SalesService } from './sales.service';
+import { EventPattern, Payload } from '@nestjs/microservices';
 
-@Controller()
+@Controller('orders')
 export class SalesController {
-  constructor(private readonly salesService: SalesService) {}
+  constructor(private readonly salesService: SalesService) { }
 
-  @Get()
-  getHello(): string {
-    return this.salesService.getHello();
+  @Post()
+  createOrder(@Body() body: any) {
+    return this.salesService.createOrder(body);
+  }
+
+  @EventPattern('delivery-events')
+  handleDeliveryStatus(@Payload() message: any) {
+    console.log('Received delivery update:', message);
+    return this.salesService.updateOrderStatus(message);
   }
 }
