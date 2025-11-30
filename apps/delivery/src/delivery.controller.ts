@@ -4,7 +4,7 @@ import { EventPattern, Payload } from '@nestjs/microservices';
 
 @Controller()
 export class DeliveryController {
-  constructor(private readonly deliveryService: DeliveryService) { }
+  constructor(private readonly deliveryService: DeliveryService) {}
 
   @EventPattern('order-events')
   handleOrderCreated(@Payload() message: any) {

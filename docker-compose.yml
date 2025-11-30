@@ -39,5 +39,45 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
+  delivery:
+    build:
+      context: .
+      dockerfile: apps/delivery/Dockerfile
+    depends_on:
+      - postgres
+      - kafka
+      - redis
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: checkpoint_db
+      KAFKA_BROKERS: kafka:9092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    restart: always
+
+  sales:
+    build:
+      context: .
+      dockerfile: apps/sales/Dockerfile
+    depends_on:
+      - postgres
+      - kafka
+      - redis
+    ports:
+      - "3000:3000"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: checkpoint_db
+      KAFKA_BROKERS: kafka:9092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    restart: always
+
 volumes:
   postgres_data:

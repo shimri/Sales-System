@@ -10,7 +10,7 @@ export class DeliveryService implements OnModuleInit {
     @InjectRepository(Shipment)
     private readonly shipmentRepository: Repository<Shipment>,
     @Inject('SALES_SERVICE') private readonly salesClient: ClientKafka,
-  ) { }
+  ) {}
 
   async onModuleInit() {
     await this.salesClient.connect();

@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Module } from '@nestjs/common';
 import { DeliveryController } from './delivery.controller';
 import { DeliveryService } from './delivery.service';
@@ -5,20 +6,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule } from '@nestjs/config';
 import { Shipment } from './shipment/shipment.entity';
+import { databaseConfig } from './database/database.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'user',
-      password: 'password',
-      database: 'checkpoint_db',
-      autoLoadEntities: true,
-      synchronize: true, // For dev only
-    }),
+    TypeOrmModule.forRoot(databaseConfig()),
     TypeOrmModule.forFeature([Shipment]),
     ClientsModule.register([
       {
@@ -27,7 +20,7 @@ import { Shipment } from './shipment/shipment.entity';
         options: {
           client: {
             clientId: 'delivery',
-            brokers: ['localhost:9092'],
+            brokers: [process.env.KAFKA_BROKERS || 'localhost:9092'],
           },
           consumer: {
             groupId: 'delivery-producer',

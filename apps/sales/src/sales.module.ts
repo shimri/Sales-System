@@ -1,24 +1,16 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { SalesController } from './sales.controller';
 import { SalesService } from './sales.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { ConfigModule } from '@nestjs/config';
 import { Order } from './order/order.entity';
+import { databaseConfig } from './database/database.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'user',
-      password: 'password',
-      database: 'checkpoint_db',
-      autoLoadEntities: true,
-      synchronize: true, // For dev only
-    }),
+    TypeOrmModule.forRoot(databaseConfig()),
     TypeOrmModule.forFeature([Order]),
     ClientsModule.register([
       {
@@ -27,7 +19,7 @@ import { Order } from './order/order.entity';
         options: {
           client: {
             clientId: 'sales',
-            brokers: ['localhost:9092'],
+            brokers: [process.env.KAFKA_BROKERS || 'localhost:9092'],
           },
           consumer: {
             groupId: 'sales-consumer',
@@ -39,4 +31,4 @@ import { Order } from './order/order.entity';
   controllers: [SalesController],
   providers: [SalesService],
 })
-export class SalesModule { }
+export class SalesModule {}

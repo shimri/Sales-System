@@ -14,7 +14,10 @@ export class SalesService implements OnModuleInit {
     private readonly orderRepository: Repository<Order>,
     @Inject('DELIVERY_SERVICE') private readonly deliveryClient: ClientKafka,
   ) {
-    this.redis = new Redis({ host: 'localhost', port: 6379 });
+    this.redis = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+    });
   }
 
   async onModuleInit() {

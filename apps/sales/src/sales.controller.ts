@@ -4,7 +4,7 @@ import { EventPattern, Payload } from '@nestjs/microservices';
 
 @Controller('orders')
 export class SalesController {
-  constructor(private readonly salesService: SalesService) { }
+  constructor(private readonly salesService: SalesService) {}
 
   @Post()
   createOrder(@Body() body: any) {
