@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Shipment } from './shipment/shipment.entity';
 import { ClientKafka } from '@nestjs/microservices';
+import { EventValidator } from './validator/event.validator';
 
 @Injectable()
 export class DeliveryService implements OnModuleInit {
@@ -10,6 +11,7 @@ export class DeliveryService implements OnModuleInit {
     @InjectRepository(Shipment)
     private readonly shipmentRepository: Repository<Shipment>,
     @Inject('SALES_SERVICE') private readonly salesClient: ClientKafka,
+    private readonly eventValidator: EventValidator,
   ) {}
 
   async onModuleInit() {
@@ -33,11 +35,17 @@ export class DeliveryService implements OnModuleInit {
       // Update to Shipped
       shipment.status = 'Shipped';
       await this.shipmentRepository.save(shipment);
-      this.salesClient.emit('delivery-events', {
+      
+      const shippedEventPayload = {
         orderId,
         status: 'Shipped',
         timestamp: new Date().toISOString(),
-      });
+      };
+
+      // Validate event payload before publishing
+      await this.eventValidator.validateDeliveryEvent(shippedEventPayload);
+
+      this.salesClient.emit('delivery-events', shippedEventPayload);
       console.log(`Order ${orderId} Shipped`);
 
       // Simulate Delivery Time
@@ -45,11 +53,17 @@ export class DeliveryService implements OnModuleInit {
         // Update to Delivered
         shipment.status = 'Delivered';
         await this.shipmentRepository.save(shipment);
-        this.salesClient.emit('delivery-events', {
+        
+        const deliveredEventPayload = {
           orderId,
           status: 'Delivered',
           timestamp: new Date().toISOString(),
-        });
+        };
+
+        // Validate event payload before publishing
+        await this.eventValidator.validateDeliveryEvent(deliveredEventPayload);
+
+        this.salesClient.emit('delivery-events', deliveredEventPayload);
         console.log(`Order ${orderId} Delivered`);
       }, 5000);
     }, 2000);

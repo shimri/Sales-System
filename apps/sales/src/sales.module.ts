@@ -8,6 +8,7 @@ import { Order } from './order/order.entity';
 import { databaseConfig } from './database/database.config';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
 import { CorrelationIdService } from './correlation-id/correlation-id.service';
+import { EventValidator } from './validator/event.validator';
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import { CorrelationIdService } from './correlation-id/correlation-id.service';
     ]),
   ],
   controllers: [SalesController],
-  providers: [SalesService, CorrelationIdService],
+  providers: [SalesService, CorrelationIdService, EventValidator],
 })
 export class SalesModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

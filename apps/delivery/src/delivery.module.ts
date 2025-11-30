@@ -7,6 +7,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule } from '@nestjs/config';
 import { Shipment } from './shipment/shipment.entity';
 import { databaseConfig } from './database/database.config';
+import { EventValidator } from './validator/event.validator';
 
 @Module({
   imports: [
@@ -30,6 +31,6 @@ import { databaseConfig } from './database/database.config';
     ]),
   ],
   controllers: [DeliveryController],
-  providers: [DeliveryService],
+  providers: [DeliveryService, EventValidator],
 })
 export class DeliveryModule { }

@@ -5,6 +5,7 @@ import { Order } from './order/order.entity';
 import { ClientKafka } from '@nestjs/microservices';
 import Redis from 'ioredis';
 import { CorrelationIdService } from './correlation-id/correlation-id.service';
+import { EventValidator } from './validator/event.validator';
 
 @Injectable()
 export class SalesService implements OnModuleInit {
@@ -15,6 +16,7 @@ export class SalesService implements OnModuleInit {
     private readonly orderRepository: Repository<Order>,
     @Inject('DELIVERY_SERVICE') private readonly deliveryClient: ClientKafka,
     private readonly correlationIdService: CorrelationIdService,
+    private readonly eventValidator: EventValidator,
   ) {
     this.redis = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
@@ -47,14 +49,19 @@ export class SalesService implements OnModuleInit {
 
     // Publish Event
     const correlationId = this.correlationIdService.getCorrelationId();
-    this.deliveryClient.emit('order-events', {
+    const eventPayload = {
       orderId: savedOrder.id,
       userId,
       items,
       amount,
       timestamp: new Date().toISOString(),
       correlationId: correlationId || 'unknown',
-    });
+    };
+
+    // Validate event payload before publishing
+    await this.eventValidator.validateOrderEvent(eventPayload);
+
+    this.deliveryClient.emit('order-events', eventPayload);
 
     // Cache for Idempotency
     await this.redis.set(
