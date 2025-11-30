@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { SalesController } from './sales.controller';
 import { SalesService } from './sales.service';
@@ -6,6 +6,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { Order } from './order/order.entity';
 import { databaseConfig } from './database/database.config';
+import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
+import { CorrelationIdService } from './correlation-id/correlation-id.service';
 
 @Module({
   imports: [
@@ -29,6 +31,10 @@ import { databaseConfig } from './database/database.config';
     ]),
   ],
   controllers: [SalesController],
-  providers: [SalesService],
+  providers: [SalesService, CorrelationIdService],
 })
-export class SalesModule {}
+export class SalesModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CorrelationIdMiddleware).forRoutes('*');
+  }
+}

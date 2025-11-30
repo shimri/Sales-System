@@ -1,13 +1,14 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import { EventPattern, Payload } from '@nestjs/microservices';
+import { CreateOrderDto } from './order/create-order.dto';
 
 @Controller('orders')
 export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 
   @Post()
-  createOrder(@Body() body: any) {
+  createOrder(@Body() body: CreateOrderDto) {
     return this.salesService.createOrder(body);
   }
 

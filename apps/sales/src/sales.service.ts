@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Order } from './order/order.entity';
 import { ClientKafka } from '@nestjs/microservices';
 import Redis from 'ioredis';
+import { CorrelationIdService } from './correlation-id/correlation-id.service';
 
 @Injectable()
 export class SalesService implements OnModuleInit {
@@ -13,6 +14,7 @@ export class SalesService implements OnModuleInit {
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
     @Inject('DELIVERY_SERVICE') private readonly deliveryClient: ClientKafka,
+    private readonly correlationIdService: CorrelationIdService,
   ) {
     this.redis = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
@@ -44,12 +46,14 @@ export class SalesService implements OnModuleInit {
     const savedOrder = await this.orderRepository.save(order);
 
     // Publish Event
+    const correlationId = this.correlationIdService.getCorrelationId();
     this.deliveryClient.emit('order-events', {
       orderId: savedOrder.id,
       userId,
       items,
       amount,
       timestamp: new Date().toISOString(),
+      correlationId: correlationId || 'unknown',
     });
 
     // Cache for Idempotency
