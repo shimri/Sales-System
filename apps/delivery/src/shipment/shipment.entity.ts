@@ -6,6 +6,13 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+export enum ShipmentStatus {
+  Pending = 'Pending',
+  Shipped = 'Shipped',
+  Delivered = 'Delivered',
+  Cancelled = 'Cancelled',
+}
+
 @Entity()
 export class Shipment {
   @PrimaryGeneratedColumn('uuid')
@@ -17,8 +24,12 @@ export class Shipment {
   @Column()
   userId: string;
 
-  @Column({ default: 'Pending' })
-  status: string;
+  @Column({
+    type: 'enum',
+    enum: ShipmentStatus,
+    default: ShipmentStatus.Pending,
+  })
+  status: ShipmentStatus;
 
   @CreateDateColumn()
   createdAt: Date;

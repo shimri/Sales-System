@@ -1,7 +1,7 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Shipment } from './shipment/shipment.entity';
+import { Shipment, ShipmentStatus } from './shipment/shipment.entity';
 import { ClientKafka } from '@nestjs/microservices';
 import { EventValidator } from './validator/event.validator';
 
@@ -26,19 +26,19 @@ export class DeliveryService implements OnModuleInit {
     const shipment = this.shipmentRepository.create({
       orderId,
       userId,
-      status: 'Pending',
+      status: ShipmentStatus.Pending,
     });
     await this.shipmentRepository.save(shipment);
 
     // Simulate Processing Time
     setTimeout(async () => {
       // Update to Shipped
-      shipment.status = 'Shipped';
+      shipment.status = ShipmentStatus.Shipped;
       await this.shipmentRepository.save(shipment);
       
       const shippedEventPayload = {
         orderId,
-        status: 'Shipped',
+        status: ShipmentStatus.Shipped,
         timestamp: new Date().toISOString(),
       };
 
@@ -51,12 +51,12 @@ export class DeliveryService implements OnModuleInit {
       // Simulate Delivery Time
       setTimeout(async () => {
         // Update to Delivered
-        shipment.status = 'Delivered';
+        shipment.status = ShipmentStatus.Delivered;
         await this.shipmentRepository.save(shipment);
         
         const deliveredEventPayload = {
           orderId,
-          status: 'Delivered',
+          status: ShipmentStatus.Delivered,
           timestamp: new Date().toISOString(),
         };
 

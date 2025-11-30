@@ -1,7 +1,7 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Order } from './order/order.entity';
+import { Order, OrderStatus } from './order/order.entity';
 import { ClientKafka } from '@nestjs/microservices';
 import Redis from 'ioredis';
 import { CorrelationIdService } from './correlation-id/correlation-id.service';
@@ -43,7 +43,7 @@ export class SalesService implements OnModuleInit {
       userId,
       items,
       amount,
-      status: 'Pending Shipment',
+      status: OrderStatus.PendingShipment,
     });
     const savedOrder = await this.orderRepository.save(order);
 
