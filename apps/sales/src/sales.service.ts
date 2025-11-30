@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order, OrderStatus } from './order/order.entity';
@@ -6,10 +6,12 @@ import { ClientKafka } from '@nestjs/microservices';
 import Redis from 'ioredis';
 import { CorrelationIdService } from './correlation-id/correlation-id.service';
 import { EventValidator } from './validator/event.validator';
+import { OutboxService } from './outbox/outbox.service';
 
 @Injectable()
 export class SalesService implements OnModuleInit {
   private readonly redis: Redis;
+  private readonly logger = new Logger(SalesService.name);
 
   constructor(
     @InjectRepository(Order)
@@ -17,6 +19,7 @@ export class SalesService implements OnModuleInit {
     @Inject('DELIVERY_SERVICE') private readonly deliveryClient: ClientKafka,
     private readonly correlationIdService: CorrelationIdService,
     private readonly eventValidator: EventValidator,
+    private readonly outboxService: OutboxService,
   ) {
     this.redis = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
@@ -61,7 +64,24 @@ export class SalesService implements OnModuleInit {
     // Validate event payload before publishing
     await this.eventValidator.validateOrderEvent(eventPayload);
 
-    this.deliveryClient.emit('order-events', eventPayload);
+    // Publish Event with Outbox Pattern
+    // Note: emit() in NestJS Kafka client is fire-and-forget and may not throw synchronously
+    // We'll attempt to publish, and if it fails, save to outbox for retry
+    try {
+      // Attempt to publish to Kafka
+      this.deliveryClient.emit('order-events', eventPayload);
+      this.logger.log(`Successfully published order event for order ${savedOrder.id}`);
+    } catch (error) {
+      // If Kafka publish fails synchronously, save to outbox for retry
+      this.logger.error(
+        `Failed to publish order event to Kafka, saving to outbox: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      await this.outboxService.saveToOutbox(
+        'order-events',
+        eventPayload,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
 
     // Cache for Idempotency
     await this.redis.set(

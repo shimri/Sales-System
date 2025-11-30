@@ -9,12 +9,15 @@ import { databaseConfig } from './database/database.config';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
 import { CorrelationIdService } from './correlation-id/correlation-id.service';
 import { EventValidator } from './validator/event.validator';
+import { Outbox } from './outbox/outbox.entity';
+import { OutboxService } from './outbox/outbox.service';
+import { OutboxSchedulerService } from './outbox/outbox-scheduler.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
     TypeOrmModule.forRoot(databaseConfig()),
-    TypeOrmModule.forFeature([Order]),
+    TypeOrmModule.forFeature([Order, Outbox]),
     ClientsModule.register([
       {
         name: 'DELIVERY_SERVICE',
@@ -32,7 +35,13 @@ import { EventValidator } from './validator/event.validator';
     ]),
   ],
   controllers: [SalesController],
-  providers: [SalesService, CorrelationIdService, EventValidator],
+  providers: [
+    SalesService,
+    CorrelationIdService,
+    EventValidator,
+    OutboxService,
+    OutboxSchedulerService,
+  ],
 })
 export class SalesModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
