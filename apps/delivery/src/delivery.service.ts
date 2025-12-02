@@ -50,11 +50,36 @@ export class DeliveryService implements OnModuleInit {
     const { orderId, userId, correlationId } = orderData;
     this.logger.log(`Processing order ${orderId} with correlationId ${correlationId}`);
 
+    // Idempotency check: Check if shipment already exists for this orderId
+    const existingShipment = await this.shipmentRepository.findOne({
+      where: { orderId },
+    });
+
+    if (existingShipment) {
+      this.logger.log(
+        `Shipment already exists for order ${orderId} (id: ${existingShipment.id}, status: ${existingShipment.status}), skipping duplicate event`,
+      );
+      return existingShipment;
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
+      // Double-check within transaction to handle race conditions
+      const existingShipmentInTx = await queryRunner.manager.findOne(Shipment, {
+        where: { orderId },
+      });
+
+      if (existingShipmentInTx) {
+        await queryRunner.rollbackTransaction();
+        this.logger.log(
+          `Shipment already exists for order ${orderId} (detected in transaction), returning existing shipment`,
+        );
+        return existingShipmentInTx;
+      }
+
       // Create Shipment
       const shipment = queryRunner.manager.create(Shipment, {
         orderId,
