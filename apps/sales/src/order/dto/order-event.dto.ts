@@ -30,9 +30,9 @@ export class OrderItemEventDto {
 }
 
 export class OrderEventDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  orderId: string;
+  orderId?: string;
 
   @IsString()
   @IsNotEmpty()

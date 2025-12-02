@@ -43,8 +43,7 @@ export class CreateOrderDto {
   @Min(0)
   amount: number;
 
-  @IsOptional()
   @IsString()
-  idempotencyKey?: string;
+  idempotencyKey: string;
 }
 

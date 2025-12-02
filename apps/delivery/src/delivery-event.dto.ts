@@ -18,5 +18,9 @@ export class DeliveryEventDto {
   @IsString()
   @IsISO8601()
   timestamp: string;
+
+  @IsString()
+  @IsNotEmpty()
+  correlationId: string;
 }
 

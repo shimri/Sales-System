@@ -1,0 +1,63 @@
+### Sales API - Create Order Endpoint
+### Base URL: http://localhost:3000
+
+### Create Order - Basic Request
+POST http://localhost:3000/orders
+Content-Type: application/json
+
+{
+  "userId": "user-123",
+  "idempotencyKey": "unique-key-123456",
+  "items": [
+    {
+      "productId": "prod-001",
+      "quantity": 2,
+      "price": 29.99,
+      "name": "Sample Product"
+    }
+  ],
+  "amount": 59.98
+}
+
+### Create Order - With Multiple Items
+POST http://localhost:3000/orders
+Content-Type: application/json
+
+{
+  "userId": "user-456",
+  "idempotencyKey": "unique-key-12345",
+  "items": [
+    {
+      "productId": "prod-001",
+      "quantity": 1,
+      "price": 29.99,
+      "name": "Product 1"
+    },
+    {
+      "productId": "prod-002",
+      "quantity": 3,
+      "price": 15.50,
+      "name": "Product 2"
+    }
+  ],
+  "amount": 76.49,
+  "idempotencyKey": "unique-key-12345"
+}
+
+### Create Order - Minimal Request (without optional fields)
+POST http://localhost:3000/orders
+Content-Type: application/json
+
+{
+  "userId": "user-789",
+  "idempotencyKey": "unique-key-12345",
+  "items": [
+    {
+      "productId": "prod-003",
+      "quantity": 1,
+      "price": 10.00
+    }
+  ],
+  "amount": 10.00
+}
+

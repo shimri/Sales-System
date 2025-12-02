@@ -1,8 +1,8 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import { EventPattern, Payload } from '@nestjs/microservices';
-import { CreateOrderDto } from './order/create-order.dto';
-import { DeliveryEventDto } from './order/delivery-event.dto';
+import { CreateOrderDto } from './order/dto/create-order.dto';
+import { DeliveryEventDto } from './order/dto/delivery-event.dto';
 
 @Controller('orders')
 export class SalesController {

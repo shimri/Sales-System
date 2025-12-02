@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { OrderEventDto } from '../order/order-event.dto';
+import { OrderEventDto } from '../order/dto/order-event.dto';
 
 @Injectable()
 export class EventValidator {
