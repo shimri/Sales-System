@@ -91,6 +91,8 @@ services:
       KAFKA_BROKERS: kafka:9093
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-default-secret-change-in-production}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-1h}
     env_file:
       - ./apps/sales/.env
     restart: always

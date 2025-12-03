@@ -1,5 +1,10 @@
-### Sales API - Create Order Endpoint
+### Sales API - Authentication and Order Endpoints
 ### Base URL: http://localhost:3000
+###
+### AUTHENTICATION FLOW:
+### 1. Register a new user with POST /auth/register
+### 2. Login with POST /auth/login to get an access_token (JWT)
+### 3. Use the access_token in the Authorization header for protected endpoints
 ###
 ### Note: Product availability is now checked before order confirmation.
 ### Available products in mock inventory:
@@ -9,23 +14,50 @@
 ###   - product-4: 75 units
 ###   - product-5: 30 units
 ###
-### SECURITY: All endpoints require JWT authentication via Authorization header.
-### Format: Authorization: Bearer <jwt-token>
-### The JWT token must contain a 'userId' claim that matches the userId in the request body.
-### Example token payload: { "userId": "user-123", "email": "user@example.com" }
-###
-### To generate a test token, use a JWT library or online tool with your JWT_SECRET.
-### Example using jwt.io: Use HS256 algorithm with your secret to sign a token with the payload above.
+### SECURITY: All protected endpoints require JWT authentication via Authorization header.
+### Format: Authorization: Bearer <access_token>
+### The JWT token contains a 'userId' claim that must match the userId in the request body.
+### Example token payload: { "userId": "<uuid>", "email": "user@example.com" }
+
+### ============================================
+### AUTHENTICATION ENDPOINTS
+### ============================================
+
+### Register a new user
+POST http://localhost:3000/auth/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+
+### Login and get JWT token
+### Save the access_token from the response for use in subsequent requests
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+
+### ============================================
+### ORDER ENDPOINTS (Require Authentication)
+### ============================================
+### Note: Replace <access_token> with the token received from /auth/login
+### The userId in the request body must match the userId in the JWT token
 
 ### Create Order - Basic Request (Success)
 ### This should succeed as product-1 has 100 units available
-### Note: Replace <your-jwt-token> with a valid JWT token containing userId: "user-123"
+### Note: Replace <access_token> with token from /auth/login
+### Replace <user-id> with the userId from the login response
 POST http://localhost:3000/orders
 Content-Type: application/json
-Authorization: Bearer <your-jwt-token>
+Authorization: Bearer <access_token>
 
 {
-  "userId": "user-123",
+  "userId": "<user-id>",
   "idempotencyKey": "unique-key-123456",
   "items": [
     {
@@ -40,13 +72,13 @@ Authorization: Bearer <your-jwt-token>
 
 ### Create Order - With Multiple Items (Success)
 ### This should succeed as all products are available
-### Note: Replace <your-jwt-token> with a valid JWT token containing userId: "user-456"
+### Note: Replace <access_token> and <user-id> with values from login
 POST http://localhost:3000/orders
 Content-Type: application/json
-Authorization: Bearer <your-jwt-token>
+Authorization: Bearer <access_token>
 
 {
-  "userId": "user-456",
+  "userId": "<user-id>",
   "idempotencyKey": "unique-key-789012",
   "items": [
     {
@@ -73,13 +105,13 @@ Authorization: Bearer <your-jwt-token>
 
 ### Create Order - Minimal Request (Success)
 ### This should succeed as product-3 has 200 units available
-### Note: Replace <your-jwt-token> with a valid JWT token containing userId: "user-789"
+### Note: Replace <access_token> and <user-id> with values from login
 POST http://localhost:3000/orders
 Content-Type: application/json
-Authorization: Bearer <your-jwt-token>
+Authorization: Bearer <access_token>
 
 {
-  "userId": "user-789",
+  "userId": "<user-id>",
   "idempotencyKey": "unique-key-345678",
   "items": [
     {
@@ -93,13 +125,13 @@ Authorization: Bearer <your-jwt-token>
 
 ### Create Order - Product Unavailable (Failure)
 ### This should fail with 400 Bad Request - product-2 only has 50 units, requesting 100
-### Note: Replace <your-jwt-token> with a valid JWT token containing userId: "user-999"
+### Note: Replace <access_token> and <user-id> with values from login
 POST http://localhost:3000/orders
 Content-Type: application/json
-Authorization: Bearer <your-jwt-token>
+Authorization: Bearer <access_token>
 
 {
-  "userId": "user-999",
+  "userId": "<user-id>",
   "idempotencyKey": "unique-key-999999",
   "items": [
     {
@@ -114,13 +146,13 @@ Authorization: Bearer <your-jwt-token>
 
 ### Create Order - Multiple Products, One Unavailable (Failure)
 ### This should fail - product-5 only has 30 units, requesting 50
-### Note: Replace <your-jwt-token> with a valid JWT token containing userId: "user-888"
+### Note: Replace <access_token> and <user-id> with values from login
 POST http://localhost:3000/orders
 Content-Type: application/json
-Authorization: Bearer <your-jwt-token>
+Authorization: Bearer <access_token>
 
 {
-  "userId": "user-888",
+  "userId": "<user-id>",
   "idempotencyKey": "unique-key-888888",
   "items": [
     {
@@ -141,13 +173,13 @@ Authorization: Bearer <your-jwt-token>
 
 ### Create Order - Non-existent Product (Failure)
 ### This should fail - product-999 doesn't exist in inventory
-### Note: Replace <your-jwt-token> with a valid JWT token containing userId: "user-777"
+### Note: Replace <access_token> and <user-id> with values from login
 POST http://localhost:3000/orders
 Content-Type: application/json
-Authorization: Bearer <your-jwt-token>
+Authorization: Bearer <access_token>
 
 {
-  "userId": "user-777",
+  "userId": "<user-id>",
   "idempotencyKey": "unique-key-777777",
   "items": [
     {

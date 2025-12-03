@@ -15,7 +15,11 @@ export class SalesController {
   @Post()
   @UseGuards(JwtAuthGuard)
   createOrder(@Body() body: CreateOrderDto, @User() user: any) {
-    this.logger.log(`Creating order for authenticated user: ${user.sub}`);
+    this.logger.log(`Creating order for authenticated user: ${user.userId}`);
+    // Optional: Verify that the userId in the token matches the userId in the request body
+    if (body.userId && body.userId !== user.userId) {
+      throw new BadRequestException('User ID in token does not match user ID in request');
+    }
     return this.salesService.createOrder(body);
   }
 
