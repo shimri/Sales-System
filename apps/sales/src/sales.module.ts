@@ -13,6 +13,7 @@ import { EventValidator } from './validator/event.validator';
 import { InventoryService } from './inventory/inventory.service';
 import { ProductUnavailableExceptionFilter } from './inventory/filters/product-unavailable.filter';
 import { OrderCreationInProgressExceptionFilter } from './order/filters/order-creation-in-progress.filter';
+import { AuthModule } from './auth/auth.module';
 import Redis from 'ioredis';
 
 @Module({
@@ -20,6 +21,7 @@ import Redis from 'ioredis';
     ConfigModule.forRoot(),
     TypeOrmModule.forRoot(databaseConfig()),
     TypeOrmModule.forFeature([Order]),
+    AuthModule,
     ClientsModule.register([
       {
         name: 'DELIVERY_SERVICE',

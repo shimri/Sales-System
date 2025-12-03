@@ -49,8 +49,8 @@ services:
 
   delivery:
     build:
-      context: .
-      dockerfile: apps/delivery/Dockerfile
+      context: ./apps/delivery
+      dockerfile: Dockerfile
     depends_on:
       postgres-delivery:
         condition: service_started
@@ -67,12 +67,14 @@ services:
       KAFKA_BROKERS: kafka:9093
       REDIS_HOST: redis
       REDIS_PORT: 6379
+    env_file:
+      - ./apps/delivery/.env
     restart: always
 
   sales:
     build:
-      context: .
-      dockerfile: apps/sales/Dockerfile
+      context: ./apps/sales
+      dockerfile: Dockerfile
     depends_on:
       postgres-sales:
         condition: service_started
@@ -89,6 +91,8 @@ services:
       KAFKA_BROKERS: kafka:9093
       REDIS_HOST: redis
       REDIS_PORT: 6379
+    env_file:
+      - ./apps/sales/.env
     restart: always
 
 volumes:

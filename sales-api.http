@@ -8,11 +8,21 @@
 ###   - product-3: 200 units
 ###   - product-4: 75 units
 ###   - product-5: 30 units
+###
+### SECURITY: All endpoints require JWT authentication via Authorization header.
+### Format: Authorization: Bearer <jwt-token>
+### The JWT token must contain a 'userId' claim that matches the userId in the request body.
+### Example token payload: { "userId": "user-123", "email": "user@example.com" }
+###
+### To generate a test token, use a JWT library or online tool with your JWT_SECRET.
+### Example using jwt.io: Use HS256 algorithm with your secret to sign a token with the payload above.
 
 ### Create Order - Basic Request (Success)
 ### This should succeed as product-1 has 100 units available
+### Note: Replace <your-jwt-token> with a valid JWT token containing userId: "user-123"
 POST http://localhost:3000/orders
 Content-Type: application/json
+Authorization: Bearer <your-jwt-token>
 
 {
   "userId": "user-123",
@@ -30,8 +40,10 @@ Content-Type: application/json
 
 ### Create Order - With Multiple Items (Success)
 ### This should succeed as all products are available
+### Note: Replace <your-jwt-token> with a valid JWT token containing userId: "user-456"
 POST http://localhost:3000/orders
 Content-Type: application/json
+Authorization: Bearer <your-jwt-token>
 
 {
   "userId": "user-456",
@@ -61,8 +73,10 @@ Content-Type: application/json
 
 ### Create Order - Minimal Request (Success)
 ### This should succeed as product-3 has 200 units available
+### Note: Replace <your-jwt-token> with a valid JWT token containing userId: "user-789"
 POST http://localhost:3000/orders
 Content-Type: application/json
+Authorization: Bearer <your-jwt-token>
 
 {
   "userId": "user-789",
@@ -79,8 +93,10 @@ Content-Type: application/json
 
 ### Create Order - Product Unavailable (Failure)
 ### This should fail with 400 Bad Request - product-2 only has 50 units, requesting 100
+### Note: Replace <your-jwt-token> with a valid JWT token containing userId: "user-999"
 POST http://localhost:3000/orders
 Content-Type: application/json
+Authorization: Bearer <your-jwt-token>
 
 {
   "userId": "user-999",
@@ -98,8 +114,10 @@ Content-Type: application/json
 
 ### Create Order - Multiple Products, One Unavailable (Failure)
 ### This should fail - product-5 only has 30 units, requesting 50
+### Note: Replace <your-jwt-token> with a valid JWT token containing userId: "user-888"
 POST http://localhost:3000/orders
 Content-Type: application/json
+Authorization: Bearer <your-jwt-token>
 
 {
   "userId": "user-888",
@@ -123,8 +141,10 @@ Content-Type: application/json
 
 ### Create Order - Non-existent Product (Failure)
 ### This should fail - product-999 doesn't exist in inventory
+### Note: Replace <your-jwt-token> with a valid JWT token containing userId: "user-777"
 POST http://localhost:3000/orders
 Content-Type: application/json
+Authorization: Bearer <your-jwt-token>
 
 {
   "userId": "user-777",
