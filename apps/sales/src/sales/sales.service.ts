@@ -5,11 +5,11 @@ import { randomUUID } from 'crypto';
 import Redis from 'ioredis';
 import { DataSource, Repository } from 'typeorm';
 import { lastValueFrom, timeout } from 'rxjs';
-import { CorrelationIdService } from './correlation-id/correlation-id.service';
-import { Order, OrderStatus } from './order/entity/order.entity';
-import { EventValidator } from './validator/event.validator';
-import { InventoryService } from './inventory/inventory.service';
-import { OrderCreationInProgressException } from './order/exceptions/order-creation-in-progress.exception';
+import { CorrelationIdService } from '../correlation-id/correlation-id.service';
+import { Order, OrderStatus } from '../order/entity/order.entity';
+import { EventValidator } from '../validator/event.validator';
+import { InventoryService } from '../inventory/inventory.service';
+import { OrderCreationInProgressException } from '../order/exceptions/order-creation-in-progress.exception';
 
 @Injectable()
 export class SalesService implements OnModuleInit {
@@ -19,6 +19,7 @@ export class SalesService implements OnModuleInit {
   private readonly DB_RETRY_MAX_ATTEMPTS = 3;
   private readonly DB_RETRY_BASE_DELAY_MS = 100;
   private readonly KAFKA_EMIT_TIMEOUT_MS = 5000;
+  private readonly EVENT_IDEMPOTENCY_TTL = 86400; // 24 hours for event deduplication
 
   constructor(
     @InjectRepository(Order)
@@ -357,7 +358,7 @@ export class SalesService implements OnModuleInit {
   }
 
   async updateOrderStatus(data: any) {
-    const { orderId, status: deliveryStatus } = data;
+    const { orderId, status: deliveryStatus, correlationId } = data;
     
     this.logger.log(`Updating order ${orderId} with delivery status: ${deliveryStatus}`);
 
@@ -381,17 +382,56 @@ export class SalesService implements OnModuleInit {
       throw error;
     }
 
+    // Idempotency check: Check if order is already in target status
+    if (order.status === orderStatus) {
+      this.logger.log(
+        `Order ${orderId} is already in status ${orderStatus}, skipping duplicate status update`,
+      );
+      return order;
+    }
+
+    // Idempotency check: Check if this event was already processed
+    const eventKey = this.getEventIdempotencyKey(orderId, deliveryStatus, correlationId);
+    const isProcessed = await this.isEventAlreadyProcessed(eventKey);
+    if (isProcessed) {
+      this.logger.log(
+        `Event already processed for order ${orderId}, status ${deliveryStatus}, correlationId ${correlationId}. Skipping duplicate event.`,
+      );
+      // Return the order with current status (may have been updated by another instance)
+      return await this.orderRepository.findOne({ where: { id: orderId } });
+    }
+
     // Update order status in a transaction
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      order.status = orderStatus;
-      await queryRunner.manager.save(Order, order);
+      // Double-check status within transaction to handle race conditions
+      const orderInTx = await queryRunner.manager.findOne(Order, {
+        where: { id: orderId },
+      });
+
+      if (!orderInTx) {
+        throw new NotFoundException(`Order with ID ${orderId} not found`);
+      }
+
+      if (orderInTx.status === orderStatus) {
+        await queryRunner.rollbackTransaction();
+        this.logger.log(
+          `Order ${orderId} is already in status ${orderStatus} (detected in transaction), skipping update`,
+        );
+        return orderInTx;
+      }
+
+      orderInTx.status = orderStatus;
+      await queryRunner.manager.save(Order, orderInTx);
       await queryRunner.commitTransaction();
       
       this.logger.log(`Order ${orderId} updated to ${orderStatus}`);
+
+      // Mark event as processed after successful update
+      await this.markEventAsProcessed(eventKey);
     } catch (error) {
       await queryRunner.rollbackTransaction();
       this.logger.error(
@@ -403,6 +443,56 @@ export class SalesService implements OnModuleInit {
       throw error;
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  /**
+   * Generate composite key for event idempotency tracking
+   */
+  private getEventIdempotencyKey(
+    orderId: string,
+    status: string,
+    correlationId: string,
+  ): string {
+    return `event:delivery:${orderId}:${status}:${correlationId}`;
+  }
+
+  /**
+   * Check if event was already processed (with graceful degradation)
+   */
+  private async isEventAlreadyProcessed(eventKey: string): Promise<boolean> {
+    try {
+      const processed = await this.redis.get(eventKey);
+      if (processed) {
+        this.logger.log(`Event already processed: ${eventKey}`);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      // Graceful degradation: if Redis is unavailable, log warning and continue
+      this.logger.warn(
+        `Redis unavailable for idempotency check (${eventKey}): ${
+          error instanceof Error ? error.message : String(error)
+        }. Continuing with status-only check.`,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Mark event as processed in Redis (non-blocking)
+   */
+  private async markEventAsProcessed(eventKey: string): Promise<void> {
+    try {
+      await this.redis.set(eventKey, '1', 'EX', this.EVENT_IDEMPOTENCY_TTL);
+      this.logger.log(`Marked event as processed: ${eventKey}`);
+    } catch (error) {
+      // Non-blocking: log warning but don't fail the operation
+      this.logger.warn(
+        `Failed to mark event as processed in Redis (${eventKey}): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
   }
 }

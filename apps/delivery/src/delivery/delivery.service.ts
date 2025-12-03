@@ -133,6 +133,24 @@ export class DeliveryService implements OnModuleInit {
         throw new Error(`Shipment not found for order ${orderId}`);
       }
 
+      // Idempotency check: Check if shipment is already in Shipped status
+      if (shipment.status === ShipmentStatus.Shipped) {
+        await queryRunner.rollbackTransaction();
+        this.logger.log(
+          `Shipment for order ${orderId} is already in Shipped status, skipping duplicate update`,
+        );
+        return;
+      }
+
+      // Prevent invalid status transitions
+      if (shipment.status === ShipmentStatus.Delivered) {
+        await queryRunner.rollbackTransaction();
+        this.logger.warn(
+          `Cannot update shipment for order ${orderId} from Delivered to Shipped. Invalid status transition.`,
+        );
+        return;
+      }
+
       // Update to Shipped
       shipment.status = ShipmentStatus.Shipped;
       await queryRunner.manager.save(Shipment, shipment);
@@ -215,6 +233,24 @@ export class DeliveryService implements OnModuleInit {
 
       if (!shipment) {
         throw new Error(`Shipment not found for order ${orderId}`);
+      }
+
+      // Idempotency check: Check if shipment is already in Delivered status
+      if (shipment.status === ShipmentStatus.Delivered) {
+        await queryRunner.rollbackTransaction();
+        this.logger.log(
+          `Shipment for order ${orderId} is already in Delivered status, skipping duplicate update`,
+        );
+        return;
+      }
+
+      // Prevent invalid status transitions (can't go directly from Pending to Delivered)
+      if (shipment.status === ShipmentStatus.Pending) {
+        await queryRunner.rollbackTransaction();
+        this.logger.warn(
+          `Cannot update shipment for order ${orderId} from Pending to Delivered. Shipment must be Shipped first.`,
+        );
+        return;
       }
 
       // Update to Delivered

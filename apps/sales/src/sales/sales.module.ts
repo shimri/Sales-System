@@ -5,15 +5,15 @@ import { SalesController } from './sales.controller';
 import { SalesService } from './sales.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { Order } from './order/entity/order.entity';
-import { databaseConfig } from './database/database.config';
-import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
-import { CorrelationIdService } from './correlation-id/correlation-id.service';
-import { EventValidator } from './validator/event.validator';
-import { InventoryService } from './inventory/inventory.service';
-import { ProductUnavailableExceptionFilter } from './inventory/filters/product-unavailable.filter';
-import { OrderCreationInProgressExceptionFilter } from './order/filters/order-creation-in-progress.filter';
-import { AuthModule } from './auth/auth.module';
+import { Order } from '../order/entity/order.entity';
+import { databaseConfig } from '../database/database.config';
+import { CorrelationIdMiddleware } from '../middleware/correlation-id.middleware';
+import { CorrelationIdService } from '../correlation-id/correlation-id.service';
+import { EventValidator } from '../validator/event.validator';
+import { InventoryService } from '../inventory/inventory.service';
+import { ProductUnavailableExceptionFilter } from '../inventory/filters/product-unavailable.filter';
+import { OrderCreationInProgressExceptionFilter } from '../order/filters/order-creation-in-progress.filter';
+import { AuthModule } from '../auth/auth.module';
 import Redis from 'ioredis';
 
 @Module({

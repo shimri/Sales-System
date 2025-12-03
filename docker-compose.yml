@@ -11,6 +11,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_sales_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d sales_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   postgres-delivery:
     image: postgres:17
@@ -22,11 +27,21 @@ services:
       - "5433:5432"
     volumes:
       - postgres_delivery_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d delivery_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
@@ -46,18 +61,26 @@ services:
       KAFKA_LOG_DIRS: /var/lib/kafka/data
     volumes:
       - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9093 --list || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 40s
 
   delivery:
     build:
       context: ./apps/delivery
       dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
     depends_on:
       postgres-delivery:
-        condition: service_started
+        condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     environment:
       POSTGRES_HOST: postgres-delivery
       POSTGRES_PORT: 5432
@@ -75,13 +98,15 @@ services:
     build:
       context: ./apps/sales
       dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
     depends_on:
       postgres-sales:
-        condition: service_started
+        condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     environment:
       POSTGRES_HOST: postgres-sales
       POSTGRES_PORT: 5432

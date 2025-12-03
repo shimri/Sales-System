@@ -1,7 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { Ctx, EventPattern, KafkaContext, Payload } from '@nestjs/microservices';
-import { OrderEventDto } from './order-event.dto';
+import { OrderEventDto } from './dto/order-event.dto';
 
 @Controller()
 export class DeliveryController {
