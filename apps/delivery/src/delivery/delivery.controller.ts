@@ -1,4 +1,4 @@
-import { Controller, Logger } from '@nestjs/common';
+import { Controller, Get, Logger } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { Ctx, EventPattern, KafkaContext, Payload } from '@nestjs/microservices';
 import { OrderEventDto } from './dto/order-event.dto';
@@ -8,6 +8,16 @@ export class DeliveryController {
   private readonly logger = new Logger(DeliveryController.name);
 
   constructor(private readonly deliveryService: DeliveryService) {}
+
+  @Get()
+  root() {
+    return { service: 'delivery', status: 'ok' };
+  }
+
+  @Get('health')
+  health() {
+    return { service: 'delivery', status: 'ok' };
+  }
 
   @EventPattern('order-events')
   async handleOrderCreated(

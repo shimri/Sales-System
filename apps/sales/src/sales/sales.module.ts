@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { SalesController } from './sales.controller';
+import { HealthController } from './health.controller';
 import { SalesService } from './sales.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientsModule, Transport } from '@nestjs/microservices';
@@ -52,7 +53,7 @@ import Redis from 'ioredis';
       },
     ]),
   ],
-  controllers: [SalesController],
+  controllers: [SalesController, HealthController],
   providers: [
     {
       provide: 'REDIS_CLIENT',
