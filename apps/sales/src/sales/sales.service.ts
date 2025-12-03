@@ -218,6 +218,11 @@ export class SalesService implements OnModuleInit {
       };
 
       // Send event directly to Kafka after transaction commit
+      // TODO: In a production system, order event publishing should be reliably decoupled 
+      // from the main transaction (e.g., using an outbox table and a background publisher, 
+      // or marking the order as "pending emit" for retry by a recovery process). 
+      // Emitting directly to Kafka after committing the DB transaction, as done below,
+      // means there is a small risk of lost events if the Kafka emit fails after a successful commit (see logs).
       try {
         await lastValueFrom(
           this.deliveryClient.emit('order-events', eventPayload).pipe(
