@@ -1,7 +1,16 @@
 ### Sales API - Create Order Endpoint
 ### Base URL: http://localhost:3000
+###
+### Note: Product availability is now checked before order confirmation.
+### Available products in mock inventory:
+###   - product-1: 100 units
+###   - product-2: 50 units
+###   - product-3: 200 units
+###   - product-4: 75 units
+###   - product-5: 30 units
 
-### Create Order - Basic Request
+### Create Order - Basic Request (Success)
+### This should succeed as product-1 has 100 units available
 POST http://localhost:3000/orders
 Content-Type: application/json
 
@@ -10,7 +19,7 @@ Content-Type: application/json
   "idempotencyKey": "unique-key-123456",
   "items": [
     {
-      "productId": "prod-001",
+      "productId": "product-1",
       "quantity": 2,
       "price": 29.99,
       "name": "Sample Product"
@@ -19,43 +28,113 @@ Content-Type: application/json
   "amount": 59.98
 }
 
-### Create Order - With Multiple Items
+### Create Order - With Multiple Items (Success)
+### This should succeed as all products are available
 POST http://localhost:3000/orders
 Content-Type: application/json
 
 {
   "userId": "user-456",
-  "idempotencyKey": "unique-key-12345",
+  "idempotencyKey": "unique-key-789012",
   "items": [
     {
-      "productId": "prod-001",
-      "quantity": 1,
+      "productId": "product-1",
+      "quantity": 10,
       "price": 29.99,
       "name": "Product 1"
     },
     {
-      "productId": "prod-002",
-      "quantity": 3,
+      "productId": "product-2",
+      "quantity": 5,
       "price": 15.50,
       "name": "Product 2"
+    },
+    {
+      "productId": "product-3",
+      "quantity": 20,
+      "price": 9.99,
+      "name": "Product 3"
     }
   ],
-  "amount": 76.49,
-  "idempotencyKey": "unique-key-12345"
+  "amount": 524.40
 }
 
-### Create Order - Minimal Request (without optional fields)
+### Create Order - Minimal Request (Success)
+### This should succeed as product-3 has 200 units available
 POST http://localhost:3000/orders
 Content-Type: application/json
 
 {
   "userId": "user-789",
-  "idempotencyKey": "unique-key-12345",
+  "idempotencyKey": "unique-key-345678",
   "items": [
     {
-      "productId": "prod-003",
+      "productId": "product-3",
       "quantity": 1,
       "price": 10.00
+    }
+  ],
+  "amount": 10.00
+}
+
+### Create Order - Product Unavailable (Failure)
+### This should fail with 400 Bad Request - product-2 only has 50 units, requesting 100
+POST http://localhost:3000/orders
+Content-Type: application/json
+
+{
+  "userId": "user-999",
+  "idempotencyKey": "unique-key-999999",
+  "items": [
+    {
+      "productId": "product-2",
+      "quantity": 100,
+      "price": 15.50,
+      "name": "Product 2"
+    }
+  ],
+  "amount": 1550.00
+}
+
+### Create Order - Multiple Products, One Unavailable (Failure)
+### This should fail - product-5 only has 30 units, requesting 50
+POST http://localhost:3000/orders
+Content-Type: application/json
+
+{
+  "userId": "user-888",
+  "idempotencyKey": "unique-key-888888",
+  "items": [
+    {
+      "productId": "product-1",
+      "quantity": 10,
+      "price": 29.99,
+      "name": "Product 1"
+    },
+    {
+      "productId": "product-5",
+      "quantity": 50,
+      "price": 19.99,
+      "name": "Product 5"
+    }
+  ],
+  "amount": 1298.90
+}
+
+### Create Order - Non-existent Product (Failure)
+### This should fail - product-999 doesn't exist in inventory
+POST http://localhost:3000/orders
+Content-Type: application/json
+
+{
+  "userId": "user-777",
+  "idempotencyKey": "unique-key-777777",
+  "items": [
+    {
+      "productId": "product-999",
+      "quantity": 1,
+      "price": 10.00,
+      "name": "Non-existent Product"
     }
   ],
   "amount": 10.00

@@ -14,6 +14,7 @@ async function bootstrap() {
         brokers: process.env.KAFKA_BROKERS 
           ? process.env.KAFKA_BROKERS.split(',')
           : ['localhost:9092'],
+        clientId: 'sales-consumer-server',
         retry: {
           retries: 8,
           initialRetryTime: 100,
@@ -21,11 +22,17 @@ async function bootstrap() {
           maxRetryTime: 30000,
         },
         requestTimeout: 30000,
-        connectionTimeout: 3000,
+        connectionTimeout: 10000,
       },
       consumer: {
         groupId: 'sales-consumer',
         allowAutoTopicCreation: true,
+        sessionTimeout: 30000,
+        heartbeatInterval: 3000,
+        maxInFlightRequests: 1,
+      },
+      run: {
+        autoCommit: false,
       },
     },
   });

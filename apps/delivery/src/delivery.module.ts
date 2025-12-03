@@ -23,6 +23,7 @@ import { EventValidator } from './validator/event.validator';
             brokers: process.env.KAFKA_BROKERS 
               ? process.env.KAFKA_BROKERS.split(',')
               : ['localhost:9092'],
+            clientId: 'delivery-producer-client',
             retry: {
               retries: 8,
               initialRetryTime: 100,
@@ -30,11 +31,14 @@ import { EventValidator } from './validator/event.validator';
               maxRetryTime: 30000,
             },
             requestTimeout: 30000,
-            connectionTimeout: 3000,
+            connectionTimeout: 10000,
           },
           consumer: {
             groupId: 'delivery-producer',
             allowAutoTopicCreation: true,
+            sessionTimeout: 30000,
+            heartbeatInterval: 3000,
+            maxInFlightRequests: 1,
           },
         },
       },

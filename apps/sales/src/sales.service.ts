@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
@@ -8,6 +8,8 @@ import { lastValueFrom, timeout } from 'rxjs';
 import { CorrelationIdService } from './correlation-id/correlation-id.service';
 import { Order, OrderStatus } from './order/entity/order.entity';
 import { EventValidator } from './validator/event.validator';
+import { InventoryService } from './inventory/inventory.service';
+import { OrderCreationInProgressException } from './order/exceptions/order-creation-in-progress.exception';
 
 @Injectable()
 export class SalesService implements OnModuleInit {
@@ -25,6 +27,7 @@ export class SalesService implements OnModuleInit {
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
     private readonly correlationIdService: CorrelationIdService,
     private readonly eventValidator: EventValidator,
+    private readonly inventoryService: InventoryService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -71,6 +74,9 @@ export class SalesService implements OnModuleInit {
 
     // Validate order data before saving
     await this.validateOrderData(userId, items, amount, correlationId);
+
+    // Check product availability before confirming order
+    await this.inventoryService.checkOrderItemsAvailability(items);
 
     // Persist order and emit event directly to Kafka
     const savedOrder = await this.persistOrderAndEmitEvent(
@@ -121,10 +127,11 @@ export class SalesService implements OnModuleInit {
         this.logger.log(`Order ${idempotencyKey} created by concurrent request`);
         return JSON.parse(retryCached);
       }
-      // Still processing, throw error to prevent duplicate
-      throw new Error(
+      // Still processing, throw exception with proper HTTP status code
+      this.logger.warn(
         `Order creation already in progress for idempotency key: ${idempotencyKey}`,
       );
+      throw new OrderCreationInProgressException(idempotencyKey);
     }
 
     // Lock acquired, return null to proceed with order creation
@@ -328,9 +335,74 @@ export class SalesService implements OnModuleInit {
     return retriablePatterns.some((pattern) => errorMessage.includes(pattern));
   }
 
+  /**
+   * Map delivery status to order status
+   */
+  private mapDeliveryStatusToOrderStatus(deliveryStatus: string): OrderStatus {
+    const statusMap: Record<string, OrderStatus> = {
+      'Pending': OrderStatus.PendingShipment,
+      'Shipped': OrderStatus.Shipped,
+      'Delivered': OrderStatus.Delivered,
+      'Cancelled': OrderStatus.Cancelled,
+    };
+
+    const mappedStatus = statusMap[deliveryStatus];
+    if (!mappedStatus) {
+      throw new BadRequestException(
+        `Invalid delivery status: ${deliveryStatus}. Valid statuses are: Pending, Shipped, Delivered, Cancelled`,
+      );
+    }
+
+    return mappedStatus;
+  }
+
   async updateOrderStatus(data: any) {
-    const { orderId, status } = data;
-    await this.orderRepository.update(orderId, { status });
-    console.log(`Order ${orderId} updated to ${status}`);
+    const { orderId, status: deliveryStatus } = data;
+    
+    this.logger.log(`Updating order ${orderId} with delivery status: ${deliveryStatus}`);
+
+    // Validate order exists
+    const order = await this.orderRepository.findOne({ where: { id: orderId } });
+    if (!order) {
+      this.logger.error(`Order ${orderId} not found`);
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+
+    // Map delivery status to order status
+    let orderStatus: OrderStatus;
+    try {
+      orderStatus = this.mapDeliveryStatusToOrderStatus(deliveryStatus);
+    } catch (error) {
+      this.logger.error(
+        `Failed to map delivery status ${deliveryStatus} for order ${orderId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw error;
+    }
+
+    // Update order status in a transaction
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      order.status = orderStatus;
+      await queryRunner.manager.save(Order, order);
+      await queryRunner.commitTransaction();
+      
+      this.logger.log(`Order ${orderId} updated to ${orderStatus}`);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(
+        `Failed to update order ${orderId} status: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

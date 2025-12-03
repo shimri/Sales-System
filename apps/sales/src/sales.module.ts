@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { SalesController } from './sales.controller';
 import { SalesService } from './sales.service';
@@ -9,6 +10,9 @@ import { databaseConfig } from './database/database.config';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
 import { CorrelationIdService } from './correlation-id/correlation-id.service';
 import { EventValidator } from './validator/event.validator';
+import { InventoryService } from './inventory/inventory.service';
+import { ProductUnavailableExceptionFilter } from './inventory/filters/product-unavailable.filter';
+import { OrderCreationInProgressExceptionFilter } from './order/filters/order-creation-in-progress.filter';
 import Redis from 'ioredis';
 
 @Module({
@@ -25,6 +29,7 @@ import Redis from 'ioredis';
             brokers: process.env.KAFKA_BROKERS 
               ? process.env.KAFKA_BROKERS.split(',')
               : ['localhost:9092'],
+            clientId: 'sales-producer-client',
             retry: {
               retries: 8,
               initialRetryTime: 100,
@@ -32,11 +37,14 @@ import Redis from 'ioredis';
               maxRetryTime: 30000,
             },
             requestTimeout: 30000,
-            connectionTimeout: 3000,
+            connectionTimeout: 10000,
           },
           consumer: {
             groupId: 'sales-consumer',
             allowAutoTopicCreation: true,
+            sessionTimeout: 30000,
+            heartbeatInterval: 3000,
+            maxInFlightRequests: 1,
           },
         },
       },
@@ -56,6 +64,15 @@ import Redis from 'ioredis';
     SalesService,
     CorrelationIdService,
     EventValidator,
+    InventoryService,
+    {
+      provide: APP_FILTER,
+      useClass: ProductUnavailableExceptionFilter,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: OrderCreationInProgressExceptionFilter,
+    },
   ],
 })
 export class SalesModule implements NestModule {
